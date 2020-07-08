@@ -14,11 +14,13 @@ type DbConnection struct {
 }
 
 func NewDbConnection() *DbConnection {
-	return &DbConnection{}
+	return &DbConnection{db: make(map[string]*gorm.DB)}
 }
 func (db *DbConnection) Get(database string) *gorm.DB {
-	if db.db == nil {
-		connections(database)
+	if _, ok := db.db[database]; !ok {
+		if err := connections(database); err != nil {
+			panic(err)
+		}
 	}
 	return db.db[database]
 }

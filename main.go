@@ -1,12 +1,18 @@
 package main
 
 import (
+	"main/common"
 	v1 "main/routes/v1"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	common.DbConnections = common.NewDbConnection()
+	common.GlobalConfig = common.NewConfig()
+	if err := common.GlobalConfig.Load("yaml", "./env.yml"); err != nil {
+		panic("配置读取失败")
+	}
 	r := gin.Default()
 	version1 := r.Group("v1")
 	{

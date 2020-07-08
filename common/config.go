@@ -14,7 +14,11 @@ func NewConfig() *Config {
 	}
 
 }
-func (c *Config) Load() {
-	c.SetConfigType("yaml")
-	c.SetConfigFile("./env.yml")
+func (c *Config) Load(configType, file string) error {
+	c.SetConfigType(configType)
+	c.SetConfigFile(file)
+	if err := c.ReadInConfig(); err != nil {
+		return err
+	}
+	return nil
 }

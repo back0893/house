@@ -128,7 +128,7 @@ func HousenIndex(c *gin.Context) {
 	}
 	logs := make([]*model.ContractLog, 0)
 	if err := house.Table("contract_log").Where("id in (?)", ids).
-		Select("money,contract_at,house_id").Scan(logs).Error; err != nil {
+		Select("money,contract_at,house_id").Scan(&logs).Error; err != nil {
 		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
 		return
 	}
@@ -146,5 +146,5 @@ func HousenIndex(c *gin.Context) {
 			}
 		}
 	}
-	c.JSON(http.StatusBadRequest, common.SuccessResposne("", items))
+	c.JSON(http.StatusOK, common.SuccessResposne("", items))
 }
