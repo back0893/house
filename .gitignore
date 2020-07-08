@@ -1,0 +1,4 @@
+/vendor
+/.vscode
+/go.sum
+/env.yml
