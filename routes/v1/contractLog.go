@@ -3,38 +3,46 @@ package v1
 import (
 	"main/common"
 	"main/model"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ContractLogIn struct {
-	HouseId    int     `json:"house_id"`
-	HouseName  string  `json:"house_name"`
-	ContractAt string  `json:"contract_at"`
-	Money      float64 `json:"money"`
-	Remark     string  `json:"remark"`
+	ContractId int    `json:"contract_id"`
+	ContractAt string `json:"contract_at"`
+	Money      int    `json:"money"`
+	Remark     string `json:"remark"`
 }
 
 func ContractLogAdd(c *gin.Context) {
 	in := ContractLogIn{}
 	if err := c.BindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+		common.ErrorResposne(c, err.Error())
+		return
+	}
+	house := common.DbConnections.Get("house")
+
+	contract := model.Contract{
+		ID: in.ContractId,
+	}
+	hm := model.House{}
+	if err := house.Take(&contract).Related(&hm).Error; err != nil {
+		common.ErrorResposne(c, err.Error())
 		return
 	}
 	log := model.ContractLog{
-		HouseId:   in.HouseId,
-		HouseName: in.HouseName,
-		Monoey:    int(in.Money * 100),
-		Remark:    in.Remark,
+		Money:      in.Money,
+		Remark:     in.Remark,
+		HouseId:    hm.ID,
+		HouseName:  hm.Name,
+		ContractId: contract.ID,
 	}
 	log.ContractAt, _ = common.ParseTime("2006-01-02", in.ContractAt)
-	house := common.DbConnections.Get("house")
-	if !house.NewRecord(log) {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne("记录失败"))
+	if err := house.Create(&log).Error; err != nil {
+		common.ErrorResposne(c, "记录失败")
 		return
 	}
-	c.JSON(http.StatusBadRequest, common.SuccessResposne("记录成功", nil))
+	common.SuccessResposne(c, gin.H{"message": "记录成功"})
 }
 
 type ContractLogDeleteIn struct {
@@ -44,15 +52,15 @@ type ContractLogDeleteIn struct {
 func ContractLogDelete(c *gin.Context) {
 	in := ContractDeleteIn{}
 	if err := c.BindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+		common.ErrorResposne(c, err.Error())
 		return
 	}
 	house := common.DbConnections.Get("house")
-	if house.Delete(model.ContractLog{Id: in.Id}).Error != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne("删除失败"))
+	if house.Delete(model.ContractLog{ID: in.Id}).Error != nil {
+		common.ErrorResposne(c, "删除失败")
 		return
 	}
-	c.JSON(http.StatusBadRequest, common.ErrorResposne("删除成功"))
+	common.SuccessResposne(c, gin.H{"message": "删除成功"})
 
 }
 
@@ -61,7 +69,7 @@ type ContractLogIndexIn struct {
 }
 
 type ContractLogIndexOut struct {
-	Id         int
+	ID         int
 	HouseName  string
 	Money      int
 	ContractAt string
@@ -71,25 +79,25 @@ type ContractLogIndexOut struct {
 func ContractLogIndex(c *gin.Context) {
 	in := ContractLogIndexIn{}
 	if err := c.BindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+		common.ErrorResposne(c, err.Error())
 		return
 	}
 	house := common.DbConnections.Get("house")
 	logs := make([]*model.ContractLog, 0)
 	if err := house.Where("contract_id=?", in.ContractId).Find(&logs).Error; err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+		common.ErrorResposne(c, err.Error())
 		return
 	}
 	var items []*ContractLogIndexOut
 	for _, log := range logs {
 		item := &ContractLogIndexOut{
-			Id:         log.Id,
+			ID:         log.ID,
 			HouseName:  log.HouseName,
-			Money:      log.Monoey,
+			Money:      log.Money,
 			ContractAt: log.ContractAt.Format("2006-01-02"),
 			remark:     log.Remark,
 		}
 		items = append(items, item)
 	}
-	c.JSON(http.StatusBadRequest, common.SuccessResposne("", items))
+	common.SuccessResposne(c, gin.H{"data": items})
 }

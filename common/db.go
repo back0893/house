@@ -37,6 +37,7 @@ func connections(name string) error {
 	if err != nil {
 		return err
 	}
+	db.LogMode(true)
 	DbConnections.db[name] = db
 	return nil
 }

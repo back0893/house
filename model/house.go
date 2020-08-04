@@ -1,7 +1,11 @@
 package model
 
 type House struct {
-	Id    int
+	ID    int
 	Name  string
 	Price float64
+}
+
+func (h *House) TableName() string {
+	return "house"
 }

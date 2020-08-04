@@ -3,7 +3,6 @@ package v1
 import (
 	"main/common"
 	"main/model"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,37 +15,41 @@ type ContracIn struct {
 	Month     int    `json:"month"`
 	HouseId   int    `json:"house_id"`
 	Id        int    `json:"id"`
+	CardName  string `json:"card_name"`
+	CardNum   string `json:"card_num"`
 }
 
 func ContractAdd(c *gin.Context) {
 	in := ContracIn{}
 	if err := c.BindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+		common.ErrorResposne(c, err.Error())
 		return
 	}
 	contractModel := model.Contract{
-		Price:   in.Price,
-		Month:   in.Month,
-		HouseId: in.HouseId,
+		Price:    in.Price,
+		Month:    in.Month,
+		HouseId:  in.HouseId,
+		CardName: in.CardName,
+		CardNum:  in.CardNum,
 	}
-	if statrTime, err := common.ParseTime("2006-01-02 15:04:05", in.StartTime); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+	if statrTime, err := common.ParseTime("2006-01-02", in.StartTime); err != nil {
+		common.ErrorResposne(c, err.Error())
 		return
 	} else {
 		contractModel.StartTime = statrTime
 	}
-	if EndTime, err := common.ParseTime("2006-01-02 15:04:05", in.EndTime); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+	if EndTime, err := common.ParseTime("2006-01-02", in.EndTime); err != nil {
+		common.ErrorResposne(c, err.Error())
 		return
 	} else {
 		contractModel.EndTime = EndTime
 	}
 	house := common.DbConnections.Get("house")
-	if !house.NewRecord(contractModel) {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne("新增失败"))
+	if err := house.Create(&contractModel).Error; err != nil {
+		common.ErrorResposne(c, "新增失败")
 		return
 	}
-	c.JSON(http.StatusBadRequest, common.SuccessResposne("新增成功", nil))
+	common.SuccessResposne(c, gin.H{"message": "新增成功"})
 	return
 
 }
@@ -54,33 +57,39 @@ func ContractAdd(c *gin.Context) {
 func ContractEdit(c *gin.Context) {
 	in := ContracIn{}
 	if err := c.BindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+		common.ErrorResposne(c, err.Error())
 		return
 	}
 	contractModel := model.Contract{
-		Price:   in.Price,
-		Month:   in.Month,
-		HouseId: in.HouseId,
-		Id:      in.Id,
+		Price:    in.Price,
+		Month:    in.Month,
+		HouseId:  in.HouseId,
+		ID:       in.Id,
+		CardName: in.CardName,
+		CardNum:  in.CardNum,
 	}
-	if statrTime, err := common.ParseTime("2006-01-02 15:04:05", in.StartTime); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
-		return
-	} else {
-		contractModel.StartTime = statrTime
+	if in.StartTime != "" {
+		if statrTime, err := common.ParseTime("2006-01-02", in.StartTime); err != nil {
+			common.ErrorResposne(c, err.Error())
+			return
+		} else {
+			contractModel.StartTime = statrTime
+		}
 	}
-	if EndTime, err := common.ParseTime("2006-01-02 15:04:05", in.EndTime); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
-		return
-	} else {
-		contractModel.EndTime = EndTime
+	if in.EndTime != "" {
+		if EndTime, err := common.ParseTime("2006-01-02", in.EndTime); err != nil {
+			common.ErrorResposne(c, err.Error())
+			return
+		} else {
+			contractModel.EndTime = EndTime
+		}
 	}
 	house := common.DbConnections.Get("house")
-	if house.Update(contractModel).Error != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne("更新失败"))
+	if house.Model(&contractModel).Update(contractModel).Error != nil {
+		common.ErrorResposne(c, "修改成功")
 		return
 	}
-	c.JSON(http.StatusBadRequest, common.SuccessResposne("更新成功", nil))
+	common.SuccessResposne(c, gin.H{"message": "修改成功"})
 	return
 }
 
@@ -91,14 +100,15 @@ type ContractDeleteIn struct {
 func ContractDelete(c *gin.Context) {
 	in := ContractDeleteIn{}
 	if err := c.BindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
-	}
-	house := common.DbConnections.Get("house")
-	if house.Delete(model.Contract{Id: in.Id}).Error != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne("删除失败"))
+		common.ErrorResposne(c, err.Error())
 		return
 	}
-	c.JSON(http.StatusBadRequest, common.ErrorResposne("删除失败"))
+	house := common.DbConnections.Get("house")
+	if house.Delete(model.Contract{ID: in.Id}).Error != nil {
+		common.ErrorResposne(c, "删除失败")
+		return
+	}
+	common.SuccessResposne(c, gin.H{"message": "删除成功"})
 }
 
 type ContractIndexOut struct {
@@ -108,6 +118,8 @@ type ContractIndexOut struct {
 	Price     int
 	Month     int
 	HouseName string
+	CardName  string
+	CardNum   string
 }
 
 type ContractIndexIn struct {
@@ -117,14 +129,14 @@ type ContractIndexIn struct {
 func ContractIndex(c *gin.Context) {
 	in := ContractIndexIn{}
 	if err := c.BindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+		common.ErrorResposne(c, err.Error())
 		return
 	}
 
 	house := common.DbConnections.Get("house")
-	rows, err := house.Table("contract c").Joins("innher join house h on h.id=c.house_id and h.id=?", in.HouseId).Select("c.id,c.start_time,c.end_time,c.price,c.month,h.name").Rows()
+	rows, err := house.Table("contract c").Joins("inner join house h on h.id=c.house_id and h.id=?", in.HouseId).Select("c.id,c.start_time,c.end_time,c.price,c.month,h.name").Rows()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, common.ErrorResposne(err.Error()))
+		common.ErrorResposne(c, err.Error())
 		return
 	}
 	var startTime, endTime time.Time
@@ -136,5 +148,5 @@ func ContractIndex(c *gin.Context) {
 		item.EndTime = endTime.Format("2006-01-02")
 		items = append(items, &item)
 	}
-	c.JSON(http.StatusOK, common.SuccessResposne("", items))
+	common.SuccessResposne(c, gin.H{"data": items})
 }
