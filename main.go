@@ -10,8 +10,9 @@ import (
 func main() {
 	common.DbConnections = common.NewDbConnection()
 	common.GlobalConfig = common.NewConfig()
+	common.GlobalConfig.SetDefault("server.address", ":8080")
 	if err := common.GlobalConfig.Load("yaml", "./env.yml"); err != nil {
-		panic("配置读取失败")
+		panic(err.Error())
 	}
 	r := gin.Default()
 	version1 := r.Group("v1")
@@ -33,5 +34,5 @@ func main() {
 		version1.POST("/log/index", v1.ContractLogIndex)
 		version1.GET("/log/index", v1.ContractLogIndex)
 	}
-	r.Run(":8080")
+	r.Run(common.GlobalConfig.GetString("server.address"))
 }

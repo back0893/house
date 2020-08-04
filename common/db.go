@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -32,6 +33,8 @@ func connections(name string) error {
 	charset := GlobalConfig.GetString("db.charset")
 	parseTime := GlobalConfig.GetString("db.parseTime")
 	loc := GlobalConfig.GetString("db.loc")
+	//这里的loc需要http_parse
+	loc = url.QueryEscape(loc)
 	dns := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=%s&parseTime=%v&loc=%s", username, password, host, database, charset, parseTime, loc)
 	db, err := gorm.Open("mysql", dns)
 	if err != nil {
