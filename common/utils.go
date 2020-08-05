@@ -16,6 +16,13 @@ func SuccessResposne(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, data)
 }
 
+func OptionsResponse(c *gin.Context) {
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Headers", "Content-Type")
+	c.Header("Access-Control-Allow-Methods", "POST,GET,OPTIONS,DELETE")
+	c.JSON(http.StatusOK, nil)
+}
+
 func GetLoc() *time.Location {
 	lo := GlobalConfig.GetString("location")
 	if lo == "" {

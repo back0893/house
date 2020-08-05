@@ -23,9 +23,11 @@ func main() {
 		version1.POST("/contract/index", v1.ContractIndex)
 		version1.GET("/contract/index", v1.ContractIndex)
 
+		version1.GET("house/row", v1.HouseRow)
 		version1.POST("/house/add", v1.HouseAdd)
 		version1.POST("/house/edit", v1.HouseEdit)
 		version1.POST("/house/delete", v1.HouseDelete)
+
 		version1.POST("/house/index", v1.HousenIndex)
 		version1.GET("/house/index", v1.HousenIndex)
 

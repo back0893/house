@@ -35,7 +35,7 @@ func HouseAdd(c *gin.Context) {
 }
 
 type HouseEditIn struct {
-	ID    int     `string:"id"`
+	ID    int     `json:"id"`
 	Name  string  `json:"name"`
 	Price float64 `json:"price"`
 }
@@ -159,4 +159,21 @@ func HousenIndex(c *gin.Context) {
 		}
 	}
 	common.SuccessResposne(c, gin.H{"data": items})
+}
+
+func HouseRow(c *gin.Context) {
+	id := c.Query("id")
+	if id == "" {
+		common.ErrorResposne(c, "id不能为空")
+		return
+	}
+	house := model.House{}
+	ep := common.DbConnections.Get("ep")
+	if err := ep.Where("id=?", id).First(&house).Error; err != nil {
+		if err == sql.ErrNoRows {
+			common.ErrorResposne(c, "查询失败")
+			return
+		}
+	}
+	common.SuccessResposne(c, house)
 }
