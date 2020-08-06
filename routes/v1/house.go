@@ -10,9 +10,11 @@ import (
 )
 
 type HouseIn struct {
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Price int    `json:"price"`
 }
+
 type HouseDeleteIn struct {
 	ID int `json:"id"`
 }
@@ -34,14 +36,8 @@ func HouseAdd(c *gin.Context) {
 	common.SuccessResposne(c, gin.H{"message": "新增成功"})
 }
 
-type HouseEditIn struct {
-	ID    int     `json:"id"`
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
-}
-
 func HouseEdit(c *gin.Context) {
-	edit := HouseEditIn{}
+	edit := HouseIn{}
 	if err := c.BindJSON(&edit); err != nil {
 		common.ErrorResposne(c, err.Error())
 		return
@@ -84,7 +80,7 @@ type HouseListOut struct {
 	Id               int    `json:"id"`
 	Name             string `json:"name"`
 	Price            int    `json:"price"`
-	ContractPrice    int    `json:""contract_price`
+	ContractPrice    int    `json:"contract_price"`
 	CardName         string `json:"card_name"`
 	Month            int    `json:"month"`
 	LastContractTime string `json:"last_contract_time"`

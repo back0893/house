@@ -8,11 +8,9 @@ import (
 )
 
 func ErrorResposne(c *gin.Context, msg string) {
-	c.Header("Access-Control-Allow-Origin", "*")
 	c.JSON(http.StatusBadRequest, gin.H{"message": msg})
 }
 func SuccessResposne(c *gin.Context, data interface{}) {
-	c.Header("Access-Control-Allow-Origin", "*")
 	c.JSON(http.StatusOK, data)
 }
 

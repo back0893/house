@@ -3,10 +3,27 @@ package main
 import (
 	"main/common"
 	v1 "main/routes/v1"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
+func Options() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Method == http.MethodOptions {
+			common.OptionsResponse(c)
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+func Cose() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Next()
+	}
+}
 func main() {
 	common.DbConnections = common.NewDbConnection()
 	common.GlobalConfig = common.NewConfig()
@@ -15,6 +32,8 @@ func main() {
 		panic(err.Error())
 	}
 	r := gin.Default()
+	r.Use(Options(), Cose())
+	//卧槽,,,必须在分组之前,...为啥....
 	version1 := r.Group("v1")
 	{
 		version1.POST("/contract/add", v1.ContractAdd)
@@ -27,7 +46,6 @@ func main() {
 		version1.POST("/house/add", v1.HouseAdd)
 		version1.POST("/house/edit", v1.HouseEdit)
 		version1.POST("/house/delete", v1.HouseDelete)
-
 		version1.POST("/house/index", v1.HousenIndex)
 		version1.GET("/house/index", v1.HousenIndex)
 
