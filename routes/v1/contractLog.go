@@ -25,16 +25,13 @@ func ContractLogAdd(c *gin.Context) {
 	contract := model.Contract{
 		ID: in.ContractId,
 	}
-	hm := model.House{}
-	if err := house.Take(&contract).Related(&hm).Error; err != nil {
+	if err := house.First(&contract).Error; err != nil {
 		common.ErrorResposne(c, err.Error())
 		return
 	}
 	log := model.ContractLog{
 		Money:      in.Money,
 		Remark:     in.Remark,
-		HouseId:    hm.ID,
-		HouseName:  hm.Name,
 		ContractId: contract.ID,
 	}
 	log.ContractAt, _ = common.ParseTime("2006-01-02", in.ContractAt)
@@ -65,15 +62,14 @@ func ContractLogDelete(c *gin.Context) {
 }
 
 type ContractLogIndexIn struct {
-	ContractId int `json:"contract_id"`
+	ContractId int `json:"contract_id,string"`
 }
 
 type ContractLogIndexOut struct {
-	ID         int
-	HouseName  string
-	Money      int
-	ContractAt string
-	remark     string
+	ID         int    `json:"id"`
+	Money      int    `json:"money"`
+	ContractAt string `json:"created_at"`
+	Remark     string `json:"remark"`
 }
 
 func ContractLogIndex(c *gin.Context) {
@@ -92,10 +88,9 @@ func ContractLogIndex(c *gin.Context) {
 	for _, log := range logs {
 		item := &ContractLogIndexOut{
 			ID:         log.ID,
-			HouseName:  log.HouseName,
 			Money:      log.Money,
 			ContractAt: log.ContractAt.Format("2006-01-02"),
-			remark:     log.Remark,
+			Remark:     log.Remark,
 		}
 		items = append(items, item)
 	}

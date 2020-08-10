@@ -71,51 +71,60 @@ type HouseContract struct {
 	Id            int
 	Name          string
 	Price         int
-	ContractPrice int
-	CardName      string
-	Month         int
+	ContractPrice sql.NullInt32
+	Month         sql.NullInt32
+	ContractId    sql.NullInt32
+	EndTime       time.Time
 }
 
 type HouseListOut struct {
 	Id               int    `json:"id"`
 	Name             string `json:"name"`
 	Price            int    `json:"price"`
-	ContractPrice    int    `json:"contract_price"`
-	CardName         string `json:"card_name"`
-	Month            int    `json:"month"`
+	HasContract      bool   `json:"has_contract"`
+	ContractId       int32  `json:"contract_id"`
+	LeaveContractDay int32  `json:"leave_contract_day"`
+	PayDay           int    `json:"pay_day"`
+	Month            int32  `json:"-"`
 	LastContractTime string `json:"last_contract_time"`
-	Money            int    `json:"money"`
-	Pay              bool   `json:"pay"`
+	Money            int32  `json:"money"`
 }
 
-//对于进入来说,应该显示名称,出租价格,当前住户,交租价格,上次交租日期,租金,是否应该交租
+//对于进入来说,应该显示名称,出租价格,是否出租,剩余租期,是否应该交租,每隔几月交租,上次交租时间,租金(交)
 func HousenIndex(c *gin.Context) {
 	house := common.DbConnections.Get("house")
 	rows := make([]*HouseContract, 0)
 	now := time.Now().In(common.GetLoc())
 	if err := house.Table("house h").
-		Joins("left join contract c on h.id=c.house_id").Where("start_time<=? and end_time>=?", now.Format("2006-01-02"), now.Format("2006-01-02")).
-		Select("h.id,h.name,h.price,c.card_name,c.price as contract_price,c.month").Scan(&rows).Error; err != nil {
+		Joins("left join contract c on h.id=c.house_id").Where("(c.start_time<=? and c.end_time>=?) or (c.id is null)", now.Format("2006-01-02"), now.Format("2006-01-02")).
+		Select("h.id,h.name,h.price,c.price as contract_price,c.month,c.id as `contract_id`,c.end_time").Scan(&rows).Error; err != nil {
 		common.ErrorResposne(c, err.Error())
 		return
 	}
 
 	var items []*HouseListOut
 
-	var houseId []int
+	var contractId []int
+
 	for _, row := range rows {
-		houseId = append(houseId, row.Id)
-		items = append(items, &HouseListOut{
-			Id:            row.Id,
-			Name:          row.Name,
-			Price:         row.Price,
-			ContractPrice: row.ContractPrice,
-			CardName:      row.CardName,
-			Month:         row.Month,
-		})
+		item := &HouseListOut{
+			Id:    row.Id,
+			Name:  row.Name,
+			Price: row.Price,
+		}
+		if row.ContractId.Valid {
+			contractId = append(contractId, int(row.ContractId.Int32))
+			item.HasContract = true
+			item.LeaveContractDay = int32(row.EndTime.Sub(now).Hours() / 24)
+			item.Month = row.Month.Int32
+			item.Money = row.ContractPrice.Int32 * item.Month
+			item.ContractId = row.ContractId.Int32
+		}
+
+		items = append(items, item)
 	}
 	//获得最新交租日志
-	logRowsId, err := house.Table("contract_log").Where("house_id in (?)", houseId).
+	logRowsId, err := house.Table("contract_log").Where("contract_id in (?)", contractId).
 		Select("max(id)").Group("id").Rows()
 	if err != nil {
 		common.ErrorResposne(c, err.Error())
@@ -131,27 +140,22 @@ func HousenIndex(c *gin.Context) {
 	}
 	logs := make([]*model.ContractLog, 0)
 	if err := house.Table("contract_log").Where("id in (?)", ids).
-		Select("money,contract_at,house_id").Scan(&logs).Error; err != nil {
+		Select("money,contract_at,contract_id").Scan(&logs).Error; err != nil {
 		common.ErrorResposne(c, err.Error())
 		return
 	}
-	logsMap := make(map[int]*model.ContractLog)
+	logsMap := make(map[int32]*model.ContractLog)
 	for _, log := range logs {
-		logsMap[log.HouseId] = log
+		logsMap[int32(log.ContractId)] = log
 	}
 	contracts := make([]*model.Contract, 0)
 
-	house.Table("contract").Where("start_time<=? and end_time>=? and house_id in (?)", now.Format("2006-01-02"), now.Format("2006-01-02"), houseId).Find(&contracts)
+	house.Table("contract").Where("start_time<=? and end_time>=? and id in (?)", now.Format("2006-01-02"), now.Format("2006-01-02"), contractId).Find(&contracts)
 
 	for _, item := range items {
-		if log, ok := logsMap[item.Id]; ok {
-			if common.FindIn(log.HouseId, houseId) {
-				item.LastContractTime = log.ContractAt.Format("2006-01-02")
-				item.Money = log.Money
-				if log.ContractAt.AddDate(0, item.Month, 0).Before(now) {
-					item.Pay = true
-				}
-			}
+		if log, ok := logsMap[item.ContractId]; ok {
+			item.LastContractTime = log.ContractAt.Format("2006-01-02")
+			item.PayDay = int(log.ContractAt.AddDate(0, int(item.Month), 0).Sub(now).Hours() / 24)
 		}
 	}
 	common.SuccessResposne(c, gin.H{"data": items})
