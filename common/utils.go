@@ -46,3 +46,7 @@ func FindIn(target int, sl []int) bool {
 	}
 	return false
 }
+
+func Now() time.Time {
+	return time.Now().In(GetLoc())
+}

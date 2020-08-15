@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 )
 
 type HouseIn struct {
@@ -67,62 +68,64 @@ func HouseDelete(c *gin.Context) {
 	common.SuccessResposne(c, gin.H{"message": "删除成功"})
 }
 
-type HouseContract struct {
-	Id            int
-	Name          string
-	Price         int
-	ContractPrice sql.NullInt32
-	Month         sql.NullInt32
-	ContractId    sql.NullInt32
-	EndTime       time.Time
-}
-
 type HouseListOut struct {
 	Id               int    `json:"id"`
 	Name             string `json:"name"`
 	Price            int    `json:"price"`
 	HasContract      bool   `json:"has_contract"`
-	ContractId       int32  `json:"contract_id"`
-	LeaveContractDay int32  `json:"leave_contract_day"`
+	ContractId       int    `json:"contract_id"`
+	LeaveContractDay int    `json:"leave_contract_day"`
 	PayDay           int    `json:"pay_day"`
-	Month            int32  `json:"-"`
+	Month            int    `json:"month"`
 	LastContractTime string `json:"last_contract_time"`
-	Money            int32  `json:"money"`
+	Money            int    `json:"money"`
 }
 
 //对于进入来说,应该显示名称,出租价格,是否出租,剩余租期,是否应该交租,每隔几月交租,上次交租时间,租金(交)
 func HousenIndex(c *gin.Context) {
 	house := common.DbConnections.Get("house")
-	rows := make([]*HouseContract, 0)
 	now := time.Now().In(common.GetLoc())
-	if err := house.Table("house h").
-		Joins("left join contract c on h.id=c.house_id").Where("(c.start_time<=? and c.end_time>=?) or (c.id is null)", now.Format("2006-01-02"), now.Format("2006-01-02")).
-		Select("h.id,h.name,h.price,c.price as contract_price,c.month,c.id as `contract_id`,c.end_time").Scan(&rows).Error; err != nil {
+
+	var houses []*model.House
+	if err := house.Find(&houses).Error; err != nil {
 		common.ErrorResposne(c, err.Error())
 		return
 	}
 
 	var items []*HouseListOut
 
-	var contractId []int
+	var houseID []int
 
-	for _, row := range rows {
-		item := &HouseListOut{
-			Id:    row.Id,
+	for _, row := range houses {
+		houseID = append(houseID, row.ID)
+		items = append(items, &HouseListOut{
+			Id:    row.ID,
 			Name:  row.Name,
 			Price: row.Price,
-		}
-		if row.ContractId.Valid {
-			contractId = append(contractId, int(row.ContractId.Int32))
-			item.HasContract = true
-			item.LeaveContractDay = int32(row.EndTime.Sub(now).Hours() / 24)
-			item.Month = row.Month.Int32
-			item.Money = row.ContractPrice.Int32 * item.Month
-			item.ContractId = row.ContractId.Int32
-		}
-
-		items = append(items, item)
+		})
 	}
+	//获得合同
+	var contracts []*model.Contract
+	if err := house.Where("start_time<=? and end_time>=? and cancel=0", now.Format("2006-01-02"), now.Format("2006-01-02")).Find(&contracts).Error; err != nil {
+		common.ErrorResposne(c, err.Error())
+		return
+	}
+
+	var contractId []int
+	for _, contract := range contracts {
+		contractId = append(contractId, contract.ID)
+		for _, item := range items {
+			if item.Id == contract.HouseId {
+				item.HasContract = true
+				item.ContractId = contract.ID
+				item.Money = contract.Month
+				item.Money = contract.Month * contract.Price
+				item.LeaveContractDay = int(contract.EndTime.Sub(now).Hours() / 24)
+				break
+			}
+		}
+	}
+
 	//获得最新交租日志
 	logRowsId, err := house.Table("contract_log").Where("contract_id in (?)", contractId).
 		Select("max(id)").Group("id").Rows()
@@ -144,13 +147,10 @@ func HousenIndex(c *gin.Context) {
 		common.ErrorResposne(c, err.Error())
 		return
 	}
-	logsMap := make(map[int32]*model.ContractLog)
+	logsMap := make(map[int]*model.ContractLog)
 	for _, log := range logs {
-		logsMap[int32(log.ContractId)] = log
+		logsMap[log.ContractId] = log
 	}
-	contracts := make([]*model.Contract, 0)
-
-	house.Table("contract").Where("start_time<=? and end_time>=? and id in (?)", now.Format("2006-01-02"), now.Format("2006-01-02"), contractId).Find(&contracts)
 
 	for _, item := range items {
 		if log, ok := logsMap[item.ContractId]; ok {
@@ -170,10 +170,31 @@ func HouseRow(c *gin.Context) {
 	house := model.House{}
 	ep := common.DbConnections.Get("ep")
 	if err := ep.Where("id=?", id).First(&house).Error; err != nil {
-		if err == sql.ErrNoRows {
+		if err == gorm.ErrRecordNotFound {
 			common.ErrorResposne(c, "查询失败")
 			return
 		}
+		common.ErrorResposne(c, err.Error())
+		return
 	}
 	common.SuccessResposne(c, house)
+}
+
+type HouseSimpleOut struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+func HouseSimple(c *gin.Context) {
+	house := common.DbConnections.Get("house")
+	houses := make([]*model.House, 0)
+	house.Select("id,name").Find(&houses)
+	var items []*HouseSimpleOut
+	for _, house := range houses {
+		items = append(items, &HouseSimpleOut{
+			ID:   house.ID,
+			Name: house.Name,
+		})
+	}
+	common.SuccessResposne(c, items)
 }

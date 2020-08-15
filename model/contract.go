@@ -3,15 +3,16 @@ package model
 import "time"
 
 type Contract struct {
-	ID        int
-	StartTime time.Time
-	EndTime   time.Time
-	Price     int
-	Month     int
-	HouseId   int
-	CardName  string
-	CardNum   string
-	House     *House `gorm:"ForeignKey:HouseId"`
+	ID        int       `json:"id"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+	Price     int       `json:"price"`
+	Month     int       `json:"month"`
+	HouseId   int       `json:"house_id"`
+	CardName  string    `json:"card_name"`
+	CardNum   string    `json:"card_num"`
+	House     *House    `gorm:"ForeignKey:HouseId" json:"-"`
+	Cancel    int       `json:"cancel"`
 }
 
 func (c *Contract) TableName() string {

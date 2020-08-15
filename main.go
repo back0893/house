@@ -38,9 +38,9 @@ func main() {
 	{
 		version1.POST("/contract/add", v1.ContractAdd)
 		version1.POST("/contract/edit", v1.ContractEdit)
-		version1.POST("/contract/delete", v1.ContractDelete)
-		version1.POST("/contract/index", v1.ContractIndex)
 		version1.GET("/contract/index", v1.ContractIndex)
+		version1.POST("/contract/cancel", v1.ContractCancle)
+		version1.GET("/contract/contract-valid", v1.ContractValid)
 
 		version1.GET("house/row", v1.HouseRow)
 		version1.POST("/house/add", v1.HouseAdd)
@@ -48,6 +48,7 @@ func main() {
 		version1.POST("/house/delete", v1.HouseDelete)
 		version1.POST("/house/index", v1.HousenIndex)
 		version1.GET("/house/index", v1.HousenIndex)
+		version1.GET("house/simple", v1.HouseSimple)
 
 		version1.POST("/log/add", v1.ContractLogAdd)
 		version1.POST("/log/delete", v1.ContractLogDelete)
