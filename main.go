@@ -41,6 +41,7 @@ func main() {
 		version1.GET("/contract/index", v1.ContractIndex)
 		version1.POST("/contract/cancel", v1.ContractCancle)
 		version1.GET("/contract/contract-valid", v1.ContractValid)
+		version1.GET("/contract/simple", v1.ContractSimple)
 
 		version1.GET("house/row", v1.HouseRow)
 		version1.POST("/house/add", v1.HouseAdd)

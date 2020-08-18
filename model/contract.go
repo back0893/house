@@ -11,8 +11,8 @@ type Contract struct {
 	HouseId   int       `json:"house_id"`
 	CardName  string    `json:"card_name"`
 	CardNum   string    `json:"card_num"`
-	House     *House    `gorm:"ForeignKey:HouseId" json:"-"`
 	Cancel    int       `json:"cancel"`
+	Phone     string    `json:"phone"`
 }
 
 func (c *Contract) TableName() string {

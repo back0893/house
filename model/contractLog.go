@@ -4,14 +4,24 @@ import "time"
 
 type ContractLog struct {
 	ID         int
-	HouseId    int
-	HouseName  string
 	Money      int
 	ContractAt time.Time
 	Remark     string
 	ContractId int
+	ExtraMoney int
 }
 
-func (cl *ContractLog) TableName() string {
+func (p *ContractLog) TableName() string {
 	return "contract_log"
+}
+
+type ContractLogShow struct {
+	ID         int
+	Money      int
+	ContractAt time.Time
+	Remark     string
+	ContractId int
+	ExtraMoney int
+	HouseName  string
+	HouseId    int
 }
